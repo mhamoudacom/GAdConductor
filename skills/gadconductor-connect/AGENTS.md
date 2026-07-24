@@ -1,9 +1,9 @@
-# AGENTS.md — google-ads-connect (Codex entry point)
+# AGENTS.md — gadconductor-connect (Codex entry point)
 
 > A skill by **Mohamed Hamouda** — https://mhamouda.com
 > Digital Marketing Manager · Performance & Growth Marketing Consultant · Marketing Automation & AI Trainer · SaaS Builder
 
-This file makes the `google-ads-connect` skill work with the **OpenAI Codex CLI**.
+This file makes the `gadconductor-connect` skill work with the **OpenAI Codex CLI**.
 Codex reads `AGENTS.md` automatically; Claude Code reads `SKILL.md`. Both describe the
 same flow — **`SKILL.md` in this folder is the single source of truth.**
 

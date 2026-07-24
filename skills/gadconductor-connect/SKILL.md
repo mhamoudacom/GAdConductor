@@ -1,5 +1,5 @@
 ---
-name: google-ads-connect
+name: gadconductor-connect
 description: >-
   Connect Claude Code or the Codex CLI directly to a Google Ads account through
   the Google Ads API — no Sheets, no CSVs, no manual uploads. This one self-
@@ -29,8 +29,8 @@ and their assistant can read + write Google Ads directly.
 
 The user drops this single file into a skill folder and invokes it. It works on both:
 
-- **Claude Code** — folder `~/.claude/skills/google-ads-connect/SKILL.md` (or per-project
-  `<project>/.claude/skills/…`). It triggers on `/google-ads-connect` or a request like
+- **Claude Code** — folder `~/.claude/skills/gadconductor-connect/SKILL.md` (or per-project
+  `<project>/.claude/skills/…`). It triggers on `/gadconductor-connect` or a request like
   *"connect me to Google Ads."*
 - **Codex CLI** — the user says *"read SKILL.md and connect me to Google Ads."* Codex
   reads this file and follows it. The flow is identical; only the runner differs.

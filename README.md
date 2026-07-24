@@ -29,9 +29,9 @@ A collection of **skills** that let your AI assistant conduct the Google Ads API
 
 | Skill | What it does | Status |
 |---|---|---|
-| **`google-ads-connect`** | The full connection setup — Manager Account, developer token + Basic Access (auto-filled), OAuth, refresh token, verified `.env`. | ✅ Available |
-| `google-ads-campaigns` | Create Search / Display / Performance Max / Demand Gen campaigns, ad groups, keywords, and ads via the API. | 🔜 Coming |
-| `google-ads-optimize` | Keyword research, negative keywords, search-term cleanup, and performance analysis. | 🔜 Coming |
+| **`gadconductor-connect`** | The full connection setup — Manager Account, developer token + Basic Access (auto-filled), OAuth, refresh token, verified `.env`. | ✅ Available |
+| `gadconductor-campaigns` | Create Search / Display / Performance Max / Demand Gen campaigns, ad groups, keywords, and ads via the API. | 🔜 Coming |
+| `gadconductor-optimize` | Keyword research, negative keywords, search-term cleanup, and performance analysis. | 🔜 Coming |
 
 > **This release = Part 1: the connection.** Campaign management and optimization ship as
 > updates to this same repo — ⭐ star it to get them.
@@ -43,16 +43,16 @@ A collection of **skills** that let your AI assistant conduct the Google Ads API
 ### Claude Code
 ```bash
 # personal (all projects)
-cp -r skills/google-ads-connect ~/.claude/skills/
+cp -r skills/gadconductor-connect ~/.claude/skills/
 ```
-Then in Claude Code: type `/google-ads-connect` — or just say **“connect me to Google Ads.”**
+Then in Claude Code: type `/gadconductor-connect` — or just say **“connect me to Google Ads.”**
 
 ### Codex CLI
 ```bash
 # drop the skill anywhere in your project
-cp -r skills/google-ads-connect ./
+cp -r skills/gadconductor-connect ./
 ```
-Then tell Codex: **“read google-ads-connect/AGENTS.md and connect me to Google Ads.”**
+Then tell Codex: **“read gadconductor-connect/AGENTS.md and connect me to Google Ads.”**
 Codex reads `AGENTS.md`, which points it at the same step-by-step flow.
 
 *(One skill, two runners — the flow is identical; only who runs it differs.)*
