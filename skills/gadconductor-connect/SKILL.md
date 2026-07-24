@@ -178,6 +178,29 @@ Run `./venv/bin/python3 test_connection.py`.
 - ✗ `only approved for test accounts` → Basic Access still pending; the same token starts
   working the moment the approval email lands — nothing to re-run.
 
+## Step 9 — Make it reusable for every future session (do this after Step 8 passes)
+
+This connection is **local code, not an MCP connector** — so a *new* chat won't magically
+"see" Google Ads; it must run the local Python. Leave three files in the project folder so any
+future Claude Code / Cowork / Codex session that opens this folder knows the connection exists
+and how to use it, without re-connecting:
+
+1. Write **`gads.py`** — the reporting helper from **Appendix D**.
+2. Write **`CLAUDE.md`** — the project instructions from **Appendix D**, filling the account map
+   from the user's real accounts (run `./venv/bin/python3 gads.py accounts`, then ask the user
+   which sub-account is which).
+3. Write **`AGENTS.md`** — an identical copy of `CLAUDE.md` (Codex/Cowork read this filename).
+
+Then tell the user: *in any new chat, point it at this folder and ask for your campaigns — it
+runs `gads.py` instead of hunting for a connector.* Quick check:
+```bash
+./venv/bin/python3 gads.py accounts
+./venv/bin/python3 gads.py perf <ACCOUNT_ID>
+```
+> ⚠️ This works only where the assistant can **run local code** (Claude Code, Cowork with a
+> terminal, Codex). It does **not** make Google Ads appear as a plug-and-play MCP "connector"
+> like Meta — that would need a dedicated Google Ads MCP server (a separate project).
+
 ---
 
 ## Troubleshooting
@@ -333,4 +356,124 @@ changes are made automatically without an explicit user action.</p>
   <g font-size="11" fill="#ccc" font-family="monospace"><text x="28" y="203">████████████  Enabled</text><text x="28" y="227">██████████  Enabled</text><text x="28" y="251">█████████████  Paused</text></g>
 </svg>
 <p class="cap">Figure 1 — Internal reporting dashboard used by {{company_name}} (wireframe).</p>
+```
+
+---
+
+## Appendix D — reusable files (write in Step 9)
+
+**`gads.py`** — a small reporting helper any future session can call instead of writing code.
+```python
+#!/usr/bin/env python3
+"""gads.py — Google Ads reporting helper for this folder.
+Reads .env in the same folder. Run with the local venv, e.g.:
+    ./venv/bin/python3 gads.py accounts
+    ./venv/bin/python3 gads.py campaigns <ACCOUNT_ID> --filter TEXT
+    ./venv/bin/python3 gads.py perf <ACCOUNT_ID> --filter TEXT
+    ./venv/bin/python3 gads.py search-terms <ACCOUNT_ID>
+<ACCOUNT_ID> = a client customer id (digits, no dashes). login-customer-id (the MCC) comes from .env.
+"""
+import os, sys, argparse
+from dotenv import load_dotenv
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+def client():
+    cfg = {k: os.getenv(v) for k, v in {
+        "developer_token": "GOOGLE_ADS_DEVELOPER_TOKEN", "client_id": "GOOGLE_ADS_CLIENT_ID",
+        "client_secret": "GOOGLE_ADS_CLIENT_SECRET", "refresh_token": "GOOGLE_ADS_REFRESH_TOKEN",
+        "login_customer_id": "GOOGLE_ADS_LOGIN_CUSTOMER_ID"}.items()}
+    cfg["use_proto_plus"] = True
+    return GoogleAdsClient.load_from_dict(cfg)
+
+def egp(m): return f"{m/1e6:,.2f}"
+
+def cmd_accounts(ga, a):
+    print("Accessible customers:")
+    for r in ga.get_service("CustomerService").list_accessible_customers().resource_names:
+        print("  ", r.split("/")[-1])
+
+def cmd_campaigns(ga, a):
+    where = f"WHERE campaign.name LIKE '%{a.filter}%'" if a.filter else ""
+    q = f"SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type FROM campaign {where} ORDER BY campaign.id DESC"
+    n = 0
+    for r in ga.get_service("GoogleAdsService").search(customer_id=a.account, query=q):
+        c = r.campaign
+        print(f"  {c.id} | {c.advertising_channel_type.name:12} | {c.status.name:8} | {c.name}"); n += 1
+    print(f"({n} campaigns)")
+
+def cmd_perf(ga, a):
+    conds = [f"segments.date BETWEEN '{a.since}' AND '{a.until}'"]
+    if a.filter: conds.append(f"campaign.name LIKE '%{a.filter}%'")
+    q = ("SELECT campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros, "
+         "metrics.interactions FROM campaign WHERE " + " AND ".join(conds))
+    ti = tc = tk = tv = 0; per = {}
+    for r in ga.get_service("GoogleAdsService").search(customer_id=a.account, query=q):
+        m = r.metrics; ti += m.impressions; tk += m.clicks; tc += m.cost_micros; tv += m.interactions
+        per[r.campaign.name] = per.get(r.campaign.name, 0) + m.impressions
+    print(f"=== Performance ({a.since} → {a.until}) ===")
+    print(f"  campaigns: {len(per)} | impressions: {ti:,} | views: {tv:,} | clicks: {tk:,}")
+    print(f"  cost: {egp(tc)}  (CPM {egp(tc/ti*1000) if ti else '0'})")
+    print("  --- top 5 by impressions ---")
+    for name, imp in sorted(per.items(), key=lambda x: -x[1])[:5]:
+        print(f"    {imp:>9,}  {name[:55]}")
+
+def cmd_search_terms(ga, a):
+    q = (f"SELECT search_term_view.search_term, metrics.impressions, metrics.clicks, metrics.cost_micros "
+         f"FROM search_term_view WHERE segments.date BETWEEN '{a.since}' AND '{a.until}' "
+         "ORDER BY metrics.cost_micros DESC LIMIT 30")
+    print("Search terms (top by cost):")
+    for r in ga.get_service("GoogleAdsService").search(customer_id=a.account, query=q):
+        s = r.search_term_view; m = r.metrics
+        print(f"  {egp(m.cost_micros):>10}  imp {m.impressions:>6}  clk {m.clicks:>4}  | {s.search_term}")
+
+def main():
+    p = argparse.ArgumentParser(); sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("accounts")
+    for name in ("campaigns", "perf", "search-terms"):
+        sp = sub.add_parser(name); sp.add_argument("account")
+        sp.add_argument("--filter", default=""); sp.add_argument("--since", default="2023-01-01")
+        sp.add_argument("--until", default="2026-12-31")
+    a = p.parse_args()
+    try:
+        ga = client()
+        {"accounts": cmd_accounts, "campaigns": cmd_campaigns, "perf": cmd_perf,
+         "search-terms": cmd_search_terms}[a.cmd](ga, a)
+    except GoogleAdsException as e:
+        for er in e.failure.errors: print("ERR:", er.message[:200])
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+```
+
+**`CLAUDE.md`** (and an identical `AGENTS.md`) — fill `{{...}}` from the user's real accounts.
+```markdown
+# Google Ads is connected in THIS folder — read before acting
+
+This folder is wired to **Google Ads** via `.env` (credentials) + `venv` (the `google-ads`
+Python library). It is **local code, not a connector.** When the user asks anything about
+Google Ads / their campaigns / a specific ad account, **use this setup — do NOT use
+Meta/Facebook tools.**
+
+## How to pull data (use the helper, don't re-write code)
+    ./venv/bin/python3 gads.py accounts                 # list accessible accounts
+    ./venv/bin/python3 gads.py campaigns <ACCOUNT_ID>   # list campaigns (add --filter TEXT)
+    ./venv/bin/python3 gads.py perf <ACCOUNT_ID>        # performance summary
+    ./venv/bin/python3 gads.py search-terms <ACCOUNT_ID>
+
+## Account map
+| Name | Customer ID | Notes |
+|---|---|---|
+| MCC (login) | `{{mcc_id}}` | always the login-customer-id |
+| {{account_name}} | `{{account_id}}` | {{what runs here}} |
+
+## Rules
+- Never print or paste `.env`, the refresh token, or any secret. Never commit `.env`.
+- The API can create/edit Search / Display / Performance Max / Demand Gen campaigns. It
+  **cannot** create/edit Video (YouTube) campaigns — those are UI-only.
+- Video view counts come from `metrics.interactions` (campaign-level `metrics.video_views`
+  isn't queryable in the current API version).
 ```

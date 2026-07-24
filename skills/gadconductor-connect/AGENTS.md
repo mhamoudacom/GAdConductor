@@ -22,5 +22,11 @@ Google Ads API connection* → **open `SKILL.md` in this folder and follow it st
   the two scripts (Appendix A), a Python venv, and `pip install google-ads
   google-auth-oauthlib python-dotenv`.
 
-Follow `SKILL.md` for the full 8-step flow, the Basic Access interview + answer templates
+Follow `SKILL.md` for the full 9-step flow, the Basic Access interview + answer templates
 (Appendix B), and the Design Doc PDF template (Appendix C).
+
+## After the connection verifies (Step 9)
+Once Step 8 passes, make the connection reusable for every future session: write the
+`gads.py` reporting helper and a project `CLAUDE.md` (both in **Appendix D** of `SKILL.md`),
+so any later Codex/Claude session in this folder can pull Google Ads data without
+re-deriving the setup.
